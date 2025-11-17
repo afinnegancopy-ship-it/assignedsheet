@@ -80,7 +80,7 @@ def normalize_brand(name):
     words.sort()
     return " ".join(words)
 
-st.title("Excel Size Conversion Tool with Debugging")
+st.title("Studio Pull")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 selected_date = st.date_input("Select the date to filter from")
@@ -250,3 +250,4 @@ if uploaded_file:
         file_name=f"Processed_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
