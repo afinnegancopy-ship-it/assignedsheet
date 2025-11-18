@@ -82,9 +82,8 @@ def normalize_brand(name):
 
 def sort_by_date_and_description(df, description_col):
     if 'Date+Store' in df.columns and description_col in df.columns:
-        # Extract date part (first 10 characters, assuming DD.MM.YYYY format)
-        df['_sort_date'] = df['Date+Store'].str[:10].apply(lambda x: datetime.strptime(x, "%d.%m.%Y"))
-        # Sort by date descending (Z→A), then description ascending (A→Z)
+        # Extract the date (first 10 chars) and convert to datetime
+        df['_sort_date'] = pd.to_datetime(df['Date+Store'].str[:10], format="%d.%m.%Y", errors='coerce')
         df.sort_values(by=['_sort_date', description_col], ascending=[False, True], inplace=True)
         df.drop(columns=['_sort_date'], inplace=True)
     return df
