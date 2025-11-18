@@ -82,9 +82,16 @@ def normalize_brand(name):
 
 def sort_by_store_and_description(df, description_col):
     if 'Date+Store' in df.columns and description_col in df.columns:
-        # Ensure Date+Store is string, extract store (after first space)
-        df['_store'] = df['Date+Store'].astype(str).str.split(' ', 1).str[1].fillna('')
-        # Sort by store descending (Z→A), then description ascending (A→Z)
+        # --- Safe store extraction ---
+        def extract_store(val):
+            try:
+                val = str(val)
+                parts = val.split(' ', 1)
+                return parts[1] if len(parts) > 1 else ''
+            except:
+                return ''
+        df['_store'] = df['Date+Store'].apply(extract_store)
+        # Sort Z→A by store, A→Z by description
         df.sort_values(by=['_store', description_col], ascending=[False, True], inplace=True)
         df.drop(columns=['_store'], inplace=True)
     return df
@@ -221,7 +228,7 @@ if uploaded_file:
     designers_df.dropna(inplace=True)
     orig_df_mod.dropna(inplace=True)
     
-    # --- Sort by store Z-A, then Description A-Z ---
+    # --- Sort by store Z-A, then Description A-Z safely ---
     designers_df = sort_by_store_and_description(designers_df, description_col)
     orig_df_mod = sort_by_store_and_description(orig_df_mod, description_col)
     
