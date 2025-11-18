@@ -82,8 +82,8 @@ def normalize_brand(name):
 
 def sort_by_store_and_description(df, description_col):
     if 'Date+Store' in df.columns and description_col in df.columns:
-        # Extract the store name (everything after the first space)
-        df['_store'] = df['Date+Store'].str.split(' ', 1).str[1]
+        # Ensure Date+Store is string, extract store (after first space)
+        df['_store'] = df['Date+Store'].astype(str).str.split(' ', 1).str[1].fillna('')
         # Sort by store descending (Z→A), then description ascending (A→Z)
         df.sort_values(by=['_store', description_col], ascending=[False, True], inplace=True)
         df.drop(columns=['_store'], inplace=True)
@@ -141,38 +141,21 @@ if uploaded_file:
     brand_col = find_col(df, "Brand")
     size_val_col = find_col(df, "Size")
 
-    st.write("Detected columns:")
-    st.write({
-        "Photo Model Date": photo_model_col,
-        "Photo Still Date": photo_still_col,
-        "Department": dept_col,
-        "Item Store": item_store_col,
-        "PPID": ppid_col,
-        "Description": description_col,
-        "Barcode": barcode_col,
-        "Model Name": model_col,
-        "Brand": brand_col,
-        "Size": size_val_col
-    })
-    
-    # Check for missing columns
-    required_cols = [ppid_col, description_col, model_col, brand_col, size_val_col]
-    if None in required_cols:
-        st.error("Missing required columns. Cannot continue.")
-        st.stop()
-    
-    # --- Filter by date (optional) ---
+    # --- Ensure Size and Description are strings ---
+    if size_val_col in df.columns:
+        df[size_val_col] = df[size_val_col].astype(str).replace('nan', '')
+    if description_col in df.columns:
+        df[description_col] = df[description_col].astype(str)
+
+    # --- Filter by date ---
     assigned_dt = pd.Timestamp(selected_date)
-    st.write(f"Filtering rows from date {assigned_dt.strftime('%d.%m.%Y')}...")
-    initial_row_count = len(df)
     if photo_model_col:
         df = df[df[photo_model_col].apply(lambda x: (parse_excel_date(x) is None) or (parse_excel_date(x) >= assigned_dt))]
     if photo_still_col:
         df = df[df[photo_still_col].apply(lambda x: (parse_excel_date(x) is None) or (parse_excel_date(x) >= assigned_dt))]
-    st.write(f"Rows before date filter: {initial_row_count}, after filter: {len(df)}")
     
     if df.empty:
-        st.warning("No rows remaining after date filter. Skipping further processing.")
+        st.warning("No rows remaining after date filter.")
     
     # --- Load Model Information ---
     if 'Model Information' in xls.sheet_names:
@@ -180,12 +163,10 @@ if uploaded_file:
         model_info_name_col = model_info_df.columns[0]
         model_info_conv_col = model_info_df.columns[1]
         model_conv_map = {str(k).lower(): str(v) for k, v in zip(model_info_df[model_info_name_col], model_info_df[model_info_conv_col])}
-        st.write("Model Information loaded. Sample:", model_info_df.head())
     else:
         model_conv_map = {}
-        st.info("No 'Model Information' sheet found. Skipping model conversion.")
-    
-    # --- Prioritize rows with Model Name for duplicate PPIDs ---
+
+    # --- Prioritize rows with Model Name ---
     df['has_model'] = df[model_col].notna() & (df[model_col].astype(str).str.strip() != "")
     df.sort_values(by=['has_model'], ascending=False, inplace=True)
     df = df.drop_duplicates(subset=[ppid_col], keep='first')
@@ -213,8 +194,6 @@ if uploaded_file:
                 size = brand_size_map[actual_brand_key][size]
         
         final_size = special_num_map.get(size, size)
-        if not final_size:
-            return ""
         return f"{conv_model} {final_size}".strip() if final_size else ""
     
     df['Conversion + Size'] = df.apply(generate_conversion_size, axis=1)
@@ -245,9 +224,6 @@ if uploaded_file:
     # --- Sort by store Z-A, then Description A-Z ---
     designers_df = sort_by_store_and_description(designers_df, description_col)
     orig_df_mod = sort_by_store_and_description(orig_df_mod, description_col)
-    
-    st.write("Preview of Original Sheet:", orig_df_mod.head())
-    st.write("Preview of Designers Sheet:", designers_df.head())
     
     # --- Save to BytesIO for download ---
     output = BytesIO()
