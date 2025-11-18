@@ -80,12 +80,13 @@ def normalize_brand(name):
     words.sort()
     return " ".join(words)
 
-def sort_by_date_and_description(df, description_col):
+def sort_by_store_and_description(df, description_col):
     if 'Date+Store' in df.columns and description_col in df.columns:
-        # Extract the date (first 10 chars) and convert to datetime
-        df['_sort_date'] = pd.to_datetime(df['Date+Store'].str[:10], format="%d.%m.%Y", errors='coerce')
-        df.sort_values(by=['_sort_date', description_col], ascending=[False, True], inplace=True)
-        df.drop(columns=['_sort_date'], inplace=True)
+        # Extract the store name (everything after the first space)
+        df['_store'] = df['Date+Store'].str.split(' ', 1).str[1]
+        # Sort by store descending (Z→A), then description ascending (A→Z)
+        df.sort_values(by=['_store', description_col], ascending=[False, True], inplace=True)
+        df.drop(columns=['_store'], inplace=True)
     return df
 
 # --- Streamlit UI ---
@@ -241,9 +242,9 @@ if uploaded_file:
     designers_df.dropna(inplace=True)
     orig_df_mod.dropna(inplace=True)
     
-    # --- Sort by Date+Store Z-A, then Description A-Z ---
-    designers_df = sort_by_date_and_description(designers_df, description_col)
-    orig_df_mod = sort_by_date_and_description(orig_df_mod, description_col)
+    # --- Sort by store Z-A, then Description A-Z ---
+    designers_df = sort_by_store_and_description(designers_df, description_col)
+    orig_df_mod = sort_by_store_and_description(orig_df_mod, description_col)
     
     st.write("Preview of Original Sheet:", orig_df_mod.head())
     st.write("Preview of Designers Sheet:", designers_df.head())
