@@ -80,6 +80,16 @@ def normalize_brand(name):
     words.sort()
     return " ".join(words)
 
+def sort_by_date_and_description(df, description_col):
+    if 'Date+Store' in df.columns and description_col in df.columns:
+        # Extract date part (first 10 characters, assuming DD.MM.YYYY format)
+        df['_sort_date'] = df['Date+Store'].str[:10].apply(lambda x: datetime.strptime(x, "%d.%m.%Y"))
+        # Sort by date descending (Z→A), then description ascending (A→Z)
+        df.sort_values(by=['_sort_date', description_col], ascending=[False, True], inplace=True)
+        df.drop(columns=['_sort_date'], inplace=True)
+    return df
+
+# --- Streamlit UI ---
 st.title("Studio Pull")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
@@ -223,15 +233,18 @@ if uploaded_file:
     designers_out_cols = ['Date+Store', ppid_col, description_col, 'Conversion + Size']
     if barcode_col: designers_out_cols.insert(3, barcode_col)
     if size_val_col: designers_out_cols.insert(4, size_val_col)
-    
-    designers_df = designers_df[[c for c in designers_out_cols if c in designers_df.columns]].sort_values(by=[description_col])
+    designers_df = designers_df[[c for c in designers_out_cols if c in designers_df.columns]]
     
     orig_out_cols = ['Date+Store', ppid_col, description_col, size_val_col, 'Conversion + Size']
     orig_df_mod = orig_df_mod[[c for c in orig_out_cols if c in orig_df_mod.columns]]
     orig_df_mod.insert(3, 'Blank', '')
-    
-    orig_df_mod.dropna(inplace=True)
+
     designers_df.dropna(inplace=True)
+    orig_df_mod.dropna(inplace=True)
+    
+    # --- Sort by Date+Store Z-A, then Description A-Z ---
+    designers_df = sort_by_date_and_description(designers_df, description_col)
+    orig_df_mod = sort_by_date_and_description(orig_df_mod, description_col)
     
     st.write("Preview of Original Sheet:", orig_df_mod.head())
     st.write("Preview of Designers Sheet:", designers_df.head())
@@ -250,4 +263,3 @@ if uploaded_file:
         file_name=f"Processed_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
