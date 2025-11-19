@@ -99,7 +99,7 @@ def sort_by_store_and_description(df, description_col):
 # --- Streamlit UI ---
 st.title("Studio Pull")
 
-uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
+uploaded_file = st.file_uploader("⚠️Select the Date First⚠️ and then Upload your Excel", type=["xlsx"])
 selected_date = st.date_input("Select the date to filter from")
 
 if uploaded_file:
@@ -246,3 +246,4 @@ if uploaded_file:
         file_name=f"Processed_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
